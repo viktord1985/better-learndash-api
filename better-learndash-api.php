@@ -501,14 +501,17 @@ function blda_get_lessons($course_id)
 {
 
     if (blda_check_is_ld_active()) {
+
+        $course_lessons_args = learndash_get_course_lessons_order($course_id);
+
         $lessons_query_args = array(
             'post_type' => 'sfwd-lessons',
             'meta_key' => 'course_id',
             'meta_value' => $course_id,
             'fields' => 'ids',
             'nopaging' => true,
-            'orderby' => 'ID',
-            'order' => 'ASC',
+            'orderby' => $course_lessons_args["orderby"],
+            'order' => $course_lessons_args["order"],
         );
 
         $lessons_query = new WP_Query($lessons_query_args);
