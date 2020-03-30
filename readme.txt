@@ -1,9 +1,9 @@
 === Better LearnDash API ===
-Contributors: rickonline_nl
+Contributors: viktord
 Tags: LearnDash, Autorespond, API
 Requires at least: 4.0
-Tested up to: 4.8
-Stable tag: 0.5.1
+Tested up to: 5.3
+Stable tag: 0.5.8
 License: GPLv2 or later
 License URI: http://www.gnu.org/licenses/gpl-2.0.html
 
@@ -11,7 +11,7 @@ An API for LearnDash, specially tailored for the Dutch service Autorespond.
 
 == Description ==
 
-An API for LearnDash, specially tailored for the Dutch service Autorespond, but will most likely also work with other Autoresponders. 
+An API for LearnDash, specially tailored for the Dutch service Autorespond, but will most likely also work with other Autoresponders.
 
 This version is currently only available in the Dutch language. A translation to English is in the works.
 
@@ -33,7 +33,7 @@ With this plugin you have the option to:
 
 = I have a question =
 
-Mail me at rick@ram-ictservices.nl
+Mail me at viktord@gmoby.org
 
 == Screenshots ==
 
@@ -46,22 +46,46 @@ Mail me at rick@ram-ictservices.nl
 = 0.1.0 =
 * Development Release
 
-= 0.2.0 = 
+= 0.2.0 =
 * Several fixes
 
-= 0.3.0 = 
+= 0.3.0 =
 * Several fixes
 
-= 0.4.0 = 
+= 0.4.0 =
 * Several fixes
 
-= 0.5.0 = 
+= 0.5.0 =
 * Release
 
-= 0.5.1 = 
+= 0.5.1 =
 * Small fixes
+
+= 0.5.1 =
+* Small fixes
+
+= 0.5.2 =
+* Fix Last Name
+
+= 0.5.3 =
+* Fully checked for WordPress 4.9
+
+= 0.5.4 =
+* Fixed PHP 7.2 error
+
+= 0.5.5 =
+* Added possibility for adding multiple courses
+
+= 0.5.6 =
+* Fixed bug in result message
+
+= 0.5.7 =
+* Fixed typo in log screen
 
 == Upgrade Notice ==
 
-= 0.5.1 = 
-* Small fixes
+= 0.5.7 =
+* Fixed typo in log screen
+
+= 0.5.8 =
+* Api Updates

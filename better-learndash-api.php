@@ -3,7 +3,7 @@
 /*
 Plugin Name: Better LearnDash API
 Description: An API for LearnDash, specially tailored for the Dutch service Autorespond. Also gives option to send email notifications after successfully adding an user through the API.
-Version: 0.5.1
+Version: 0.5.7
 Author: Rick Heijster @ RAM ICT Services
 Author URI: http://www.ram-ictservices.nl
 License: GPL2
@@ -15,12 +15,12 @@ if (!defined('BLDA_VERSION_KEY'))
     define('BLDA_VERSION_KEY', 'blda_version');
 
 if (!defined('BLDA_VERSION_NUM'))
-    define('BLDA_VERSION_NUM', '0.5.1');
+    define('BLDA_VERSION_NUM', '0.5.6');
 
 /* !0. TABLE OF CONTENTS */
 
 /*
-	
+
 	1. HOOKS
 
 	2. SHORTCODES
@@ -31,7 +31,7 @@ if (!defined('BLDA_VERSION_NUM'))
 
 	4. EXTERNAL SCRIPTS
         4.1 blda_custom_css()
-		
+
 	5. ACTIONS
 		5.1 blda_install()
         5.2 blda_upgrade()
@@ -43,6 +43,9 @@ if (!defined('BLDA_VERSION_NUM'))
         5.8 blda_remove_user_from_course()
         5.9 blda_lookup_course_name_by_id()
         5.10 blda_get_list_of_courses()
+        5.10a blda_get_courses ()
+        5.10b blda_get_lessons ()
+        5.10c blda_get_topics ()
         5.11 blda_register_user_date()
 
 
@@ -57,7 +60,7 @@ if (!defined('BLDA_VERSION_NUM'))
 
 
 	7. CUSTOM POST TYPES
-	
+
 	8. ADMIN PAGES
 		8.1 blda_admin_page() - Main Admin Page
 
@@ -254,7 +257,7 @@ function blda_log_event( $query_string, $array_result ) {
 function blda_show_log() {
     global $wpdb;
 
-    $page = isset($_REQUEST['blda_log_page']) && intval($_REQUEST['blda_log_page']) > 0 ? intal($_REQUEST['blda_log_page']) : 0;
+    $page = isset($_REQUEST['blda_log_page']) && intval($_REQUEST['blda_log_page']) > 0 ? intval($_REQUEST['blda_log_page']) : 0;
 
     $first_record = $page * 50;
 
@@ -308,10 +311,18 @@ function blda_show_log() {
 function blda_add_user_to_course( $user_id, $course_id ) {
 
     if (blda_check_is_ld_active()) {
-        $result = ld_update_course_access($user_id, $course_id, false);
+        if ( strpos( $course_id, ',' ) !== false ) { //Course_id is list of courses
+            $course_ids = explode(",", $course_id);
+
+            foreach ($course_ids as $id) {
+                $result = ld_update_course_access($user_id, $id, false);
+            }
+        } else {
+            $result = ld_update_course_access($user_id, $course_id, false);
+        }
 
         if ($result) {
-            return "User " . $user_id . " added to course " . blda_lookup_course_name_by_id($course_id) . " (".$course_id.")";
+            return "User " . $user_id . " added to course(s) " . blda_lookup_course_name_by_id($course_id) . " (".$course_id.")";
         } else {
             return false;
         }
@@ -326,10 +337,18 @@ function blda_add_user_to_course( $user_id, $course_id ) {
 function blda_remove_user_from_course( $user_id, $course_id ) {
 
     if (blda_check_is_ld_active()) {
-        $result = ld_update_course_access($user_id, $course_id, true);
+        if ( strpos( $course_id, ',' ) !== false ) { //Course_id is list of courses
+            $course_ids = explode(",", $course_id);
+
+            foreach ($course_ids as $id) {
+                $result = ld_update_course_access( $user_id, $id, true );
+            }
+        } else {
+            $result = ld_update_course_access( $user_id, $course_id, true );
+        }
 
         if ($result) {
-            return "User " . $user_id . " removed from course " . $course_id;
+            return "User " . $user_id . " removed from course(s) " . $course_id;
         } else {
             return false;
         }
@@ -345,11 +364,34 @@ function blda_remove_user_from_course( $user_id, $course_id ) {
 function blda_lookup_course_name_by_id ( $course_id ) {
 
     if (blda_check_is_ld_active()) {
-        $course = get_post( $course_id );
-        if ( ( !( $course instanceof WP_Post ) ) || ( $course->post_type != 'sfwd-courses' ) || ( empty( $course->post_title ) ) ) {
-            return false;
-        } else {
-            return $course->post_title;
+        if ( strpos( $course_id, ',' ) !== false ) { //Course_id is list of courses
+            $course_ids = explode(",", $course_id);
+
+            $titles = "";
+
+            foreach($course_ids as $id) {
+                $course = get_post( $id );
+                if ( ( !( $course instanceof WP_Post ) ) || ( $course->post_type != 'sfwd-courses' ) || ( empty( $course->post_title ) ) ) {
+                    $titles = $titles;
+                } else {
+                    if ($titles == "") {
+                        $titles = $course->post_title;
+                    } else {
+                        $titles = $titles . ", " . $course->post_title;
+                    }
+                }
+            }
+
+            return $titles;
+
+        } else { //Just one course in course_id
+
+            $course = get_post( $course_id );
+            if ( ( !( $course instanceof WP_Post ) ) || ( $course->post_type != 'sfwd-courses' ) || ( empty( $course->post_title ) ) ) {
+                return false;
+            } else {
+                return $course->post_title;
+            }
         }
     } else {
         return false;
@@ -395,6 +437,155 @@ function blda_get_list_of_courses ($array = true, $include_title = true) {
     }
 
 
+}
+
+// 5.10a
+// Hint: get course
+function blda_get_courses($username)
+{
+
+    if (blda_check_is_ld_active()) {
+        $course_query_args = array(
+            'post_type' => 'sfwd-courses',
+            'fields' => 'ids',
+            'nopaging' => true,
+            'orderby' => 'ID',
+            'order' => 'ASC',
+        );
+
+        $user = get_user_by('login', $username);
+        $enrolled_courses = $user ? learndash_user_get_enrolled_courses($user->ID) : [];
+
+        $course_query = new WP_Query($course_query_args);
+
+        if ($course_query->have_posts()) {
+
+            $courses = array();
+
+            while ($course_query->have_posts()) {
+                $course_query->the_post();
+                $course["ID"] = get_the_ID();
+                $course["title"] = get_the_title();
+                //$course["content"] = get_the_content();
+                $course["content_stripped"] = wp_strip_all_tags(get_the_content());
+                $course["course_price_type"] = learndash_get_setting(get_the_ID(), 'course_price_type' );
+
+                $course["access"] = in_array(intval(get_the_ID()), $enrolled_courses);
+
+                $ld_course_steps_object = LDLMS_Factory_Post::course_steps(intval(get_the_ID()));
+                $course_steps = $ld_course_steps_object->get_steps('t');
+                $course["steps"] = $course_steps;
+
+                $ld_lessons_object = blda_get_lessons(get_the_ID());
+                $course["lessons"] = $ld_lessons_object;
+
+                $courses[] = $course;
+            }
+        } else {
+            $courses = false;
+        }
+
+        wp_reset_postdata();
+
+        return $courses;
+    } else {
+        return false;
+    }
+}
+
+// 5.10b
+// Hint: get lessons by course_id
+// Example: learndash_get_lesson_list( 538, array( 'num' => 0 ));
+// Example: learndash_get_course_lessons_list(538);
+function blda_get_lessons($course_id)
+{
+
+    if (blda_check_is_ld_active()) {
+        $lessons_query_args = array(
+            'post_type' => 'sfwd-lessons',
+            'meta_key' => 'course_id',
+            'meta_value' => $course_id,
+            'fields' => 'ids',
+            'nopaging' => true,
+            'orderby' => 'ID',
+            'order' => 'ASC',
+        );
+
+        $lessons_query = new WP_Query($lessons_query_args);
+
+        if ($lessons_query->have_posts()) {
+
+            $lessons = array();
+
+            while ($lessons_query->have_posts()) {
+                $lessons_query->the_post();
+                $lesson["ID"] = get_the_ID();
+                $lesson["title"] = get_the_title();
+                //$lesson["content"] = get_the_content();
+                $lesson["content_stripped"] = wp_strip_all_tags(get_the_content());
+
+                $lesson["lesson_video_enabled"] = learndash_get_setting(get_the_ID(), 'lesson_video_enabled' );
+                $lesson["lesson_video_url"] = learndash_get_setting(get_the_ID(), 'lesson_video_url' );
+                $lesson["lesson_video_shown"] = learndash_get_setting(get_the_ID(), 'lesson_video_shown' );
+
+                //$ld_topics_object = blda_get_topics(get_the_ID());
+                //$lesson["topics"] = $ld_topics_object;
+
+                $lessons[] = $lesson;
+            }
+        } else {
+            $lessons = false;
+        }
+
+        wp_reset_postdata();
+
+        return $lessons;
+    } else {
+        return false;
+    }
+}
+
+// 5.10c
+// Hint: get topica by lesson_id
+function blda_get_topics($lesson_id)
+{
+
+    if (blda_check_is_ld_active()) {
+        $topics_query_args = array(
+            'post_type' => 'sfwd-topic',
+            'meta_key' => 'lesson_id',
+            'meta_value' => $lesson_id,
+            'fields' => 'ids',
+            'nopaging' => true,
+            'orderby' => 'ID',
+            'order' => 'ASC',
+        );
+
+        $topics_query = new WP_Query($topics_query_args);
+
+        if ($topics_query->have_posts()) {
+
+            $topics = array();
+
+            while ($topics_query->have_posts()) {
+                $topics_query->the_post();
+                $topic["ID"] = get_the_ID();
+                $topic["title"] = get_the_title();
+                //$topic["content"] = get_the_content();
+                $topic["content_stripped"] = wp_strip_all_tags(get_the_content());
+
+                $topics[] = $topic;
+            }
+        } else {
+            $topics = false;
+        }
+
+        wp_reset_postdata();
+
+        return $topics;
+    } else {
+        return false;
+    }
 }
 
 // 5.11
@@ -452,64 +643,64 @@ function blda_register_user_data ($userid, $fname, $lname) {
 // 6.1
 // hint: Checks if LearnDash is active
 function blda_check_is_ld_active() {
-include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
+    include_once( ABSPATH . 'wp-admin/includes/plugin.php' );
 
-	$ld_is_active = false;
+    $ld_is_active = false;
 
-	if ( is_plugin_active( 'sfwd-lms/sfwd_lms.php' ) ) {
-		$ld_is_active = true;
-	}
+    if ( is_plugin_active( 'sfwd-lms/sfwd_lms.php' ) ) {
+        $ld_is_active = true;
+    }
 
-	return $ld_is_active;
+    return $ld_is_active;
 }
 
 // 6.2
 // hint: returns html for a page selector
 function blda_get_yesno_select( $input_name="blda_yesno", $input_id="", $selected_value="" ) {
 
-	// setup our select html
-	$select = '<select name="'. $input_name .'" ';
+    // setup our select html
+    $select = '<select name="'. $input_name .'" ';
 
-	// IF $input_id was passed in
-	if( strlen($input_id) ):
-		// add an input id to our select html
-		$select .= 'id="'. $input_id .'" ';
+    // IF $input_id was passed in
+    if( strlen($input_id) ):
+        // add an input id to our select html
+        $select .= 'id="'. $input_id .'" ';
 
-	endif;
+    endif;
 
-	// setup our first select option
-	$select .= '><option value="">- Select One -</option>';
+    // setup our first select option
+    $select .= '><option value="">- Select One -</option>';
 
-	//Add Yes
-	// check if this option is the currently selected option
-	$selected = '';
-	if( $selected_value == "1" ):
-		$selected = ' selected="selected" ';
-	endif;
+    //Add Yes
+    // check if this option is the currently selected option
+    $selected = '';
+    if( $selected_value == "1" ):
+        $selected = ' selected="selected" ';
+    endif;
 
-	// build our option html
-	$option = '<option value="1" '. $selected .'>Ja</option>';
+    // build our option html
+    $option = '<option value="1" '. $selected .'>Ja</option>';
 
-	// append our option to the select html
-	$select .= $option;
+    // append our option to the select html
+    $select .= $option;
 
-	//Add No
-	// check if this option is the currently selected option
-	$selected = '';
-	if( $selected_value == "0" ):
-		$selected = ' selected="selected" ';
-	endif;
+    //Add No
+    // check if this option is the currently selected option
+    $selected = '';
+    if( $selected_value == "0" ):
+        $selected = ' selected="selected" ';
+    endif;
 
-	// build our option html
-	$option = '<option value="0" '. $selected .'>Nee</option>';
+    // build our option html
+    $option = '<option value="0" '. $selected .'>Nee</option>';
 
-	// append our option to the select html
-	$select .= $option;
-	// close our select html tag
-	$select .= '</select>';
+    // append our option to the select html
+    $select .= $option;
+    // close our select html tag
+    $select .= '</select>';
 
-	// return our new select
-	return $select;
+    // return our new select
+    return $select;
 
 }
 
@@ -517,15 +708,15 @@ function blda_get_yesno_select( $input_name="blda_yesno", $input_id="", $selecte
 // hint: get's the current options and returns values in associative array
 function blda_get_current_options() {
 
-	// setup our return variable
-	$current_options = array();
+    // setup our return variable
+    $current_options = array();
 
-	try {
+    try {
 
-		$blda_option_send_confirmation_email = (get_option('blda_option_send_confirmation_email', null) !== null) ? get_option('blda_option_send_confirmation_email') : 0;
-		$blda_option_check_if_user_exists = (get_option('blda_option_check_if_user_exists', null) !== null) ? get_option('blda_option_check_if_user_exists') : 1;
-		$blda_option_update_user_data = (get_option('blda_option_update_user_data', null) !== null) ? get_option('blda_option_update_user_data') : 1;
-		$blda_option_destination_email = (get_option('blda_option_destination_email')) ? get_option('blda_option_destination_email') : get_option('admin_email');
+        $blda_option_send_confirmation_email = (get_option('blda_option_send_confirmation_email', null) !== null) ? get_option('blda_option_send_confirmation_email') : 0;
+        $blda_option_check_if_user_exists = (get_option('blda_option_check_if_user_exists', null) !== null) ? get_option('blda_option_check_if_user_exists') : 1;
+        $blda_option_update_user_data = (get_option('blda_option_update_user_data', null) !== null) ? get_option('blda_option_update_user_data') : 1;
+        $blda_option_destination_email = (get_option('blda_option_destination_email')) ? get_option('blda_option_destination_email') : get_option('admin_email');
         $blda_options_email_include_password = (get_option('blda_options_email_include_password')) ? get_option('blda_options_email_include_password') : 0;
         $blda_options_api_key = (get_option('blda_options_api_key')) ? get_option('blda_options_api_key') : "";
 
@@ -534,69 +725,69 @@ function blda_get_current_options() {
             update_option( 'blda_options_api_key', $blda_options_api_key);
         }
 
-		// build our current options associative array
-		$current_options = array(
-			'blda_option_send_confirmation_email' => $blda_option_send_confirmation_email,
-			'blda_option_check_if_user_exists' => $blda_option_check_if_user_exists,
-			'blda_option_destination_email' => $blda_option_destination_email,
-			'blda_option_update_user_data' => $blda_option_update_user_data,
+        // build our current options associative array
+        $current_options = array(
+            'blda_option_send_confirmation_email' => $blda_option_send_confirmation_email,
+            'blda_option_check_if_user_exists' => $blda_option_check_if_user_exists,
+            'blda_option_destination_email' => $blda_option_destination_email,
+            'blda_option_update_user_data' => $blda_option_update_user_data,
             'blda_options_email_include_password' => $blda_options_email_include_password,
             'blda_options_api_key' => $blda_options_api_key,
-		);
+        );
 
-	} catch( Exception $e ) {
+    } catch( Exception $e ) {
 
-		// php error
+        // php error
 
-	}
+    }
 
-	// return current options
-	return $current_options;
+    // return current options
+    return $current_options;
 
 }
 
 // 6.4
 // hint: Send email confirmations
 function blda_send_email_confirmation($action, $user, $user_pass, $level) {
-	// setup return variable
-	$email_sent = false;
+    // setup return variable
+    $email_sent = false;
 
-	$options = blda_get_current_options();
+    $options = blda_get_current_options();
 
-	$email_destination = explode(";", $options['blda_option_destination_email']);
+    $email_destination = explode(";", $options['blda_option_destination_email']);
     $email_include_password = $options['blda_options_email_include_password'];
 
-	// get email data
-	$email_contents = blda_mail_contents($action, $user, $user_pass, $level, $email_include_password);
+    // get email data
+    $email_contents = blda_mail_contents($action, $user, $user_pass, $level, $email_include_password);
 
 
-	// IF email template data was found
-	if( !empty( $email_contents ) ):
+    // IF email template data was found
+    if( !empty( $email_contents ) ):
 
-		// set wp_mail headers
-		$wp_mail_headers = array('Content-Type: text/html; charset=UTF-8');
+        // set wp_mail headers
+        $wp_mail_headers = array('Content-Type: text/html; charset=UTF-8');
 
-		// use wp_mail to send email
-		$email_sent = wp_mail( $email_destination , $email_contents['subject'], $email_contents['contents'], $wp_mail_headers );
+        // use wp_mail to send email
+        $email_sent = wp_mail( $email_destination , $email_contents['subject'], $email_contents['contents'], $wp_mail_headers );
 
-	endif;
+    endif;
 
-	return $email_sent;
+    return $email_sent;
 }
 
 // 6.5
 // hint: create email contents
 function blda_mail_contents($action, $user, $user_pass, $level, $email_include_password) {
 
-	$email_contents = array();
+    $email_contents = array();
 
-	if ($action == "new_user") {
-		$email_contents['subject'] = "Nieuwe gebruiker toegevoegd aan LearnDash via Autorespond";
-		$email_contents['contents'] = '
+    if ($action == "new_user") {
+        $email_contents['subject'] = "Nieuwe gebruiker toegevoegd aan LearnDash via Autorespond";
+        $email_contents['contents'] = '
 		<p>Hallo,</p>
 		<p>Er is zojuist een nieuwe gebruiker toegevoegd aan LearnDash via Autorespond:</p>
 		<p>Gebruiker: '.$user.'<br/>';
-		   if ($email_include_password) $email_contents['contents'] = $email_contents['contents'].'Wachtwoord: '.$user_pass.'<br/>';
+        if ($email_include_password) $email_contents['contents'] = $email_contents['contents'].'Wachtwoord: '.$user_pass.'<br/>';
 
 
         $email_contents['contents'] = $email_contents['contents'].'
@@ -605,9 +796,9 @@ function blda_mail_contents($action, $user, $user_pass, $level, $email_include_p
 		   Better LearnDash API</p>
 		';
 
-	} elseif ($action == "add_level") {
-		$email_contents['subject'] = "Nieuw level toegevoegd aan gebruiker in LearnDash Member via Autorespond";
-		$email_contents['contents'] = '
+    } elseif ($action == "add_level") {
+        $email_contents['subject'] = "Nieuw level toegevoegd aan gebruiker in LearnDash Member via Autorespond";
+        $email_contents['contents'] = '
 		<p>Hallo,</p>
 		<p>Er is zojuist een nieuwe cusus toegevoegd aan gebruiker '.$user.' in LearnDash via Autorespond:</p>
 		<p>Gebruiker: '.$user.'<br/>
@@ -615,9 +806,9 @@ function blda_mail_contents($action, $user, $user_pass, $level, $email_include_p
 		<p>Met vriendelijke groet,<br/>
 		   Better LearnDash API</p>
 		';
-	}
+    }
 
-	return $email_contents;
+    return $email_contents;
 
 }
 
@@ -652,10 +843,10 @@ function blda_generate_api_key () {
 
 function blda_admin_page() {
 
-	$options = blda_get_current_options();
+    $options = blda_get_current_options();
 
-	if (!blda_check_is_ld_active()) {
-		$error_ld_not_active = '
+    if (!blda_check_is_ld_active()) {
+        $error_ld_not_active = '
             <div class="error">
                 <p>
                     <strong>De plugin LearnDash is niet gevonden.</strong>
@@ -667,7 +858,7 @@ function blda_admin_page() {
                     Zonder LearnDash heeft deze plugin geen functie.
                 </p>
             </div>';
-	}
+    }
 
     $active_tab = isset($_GET['tab']) ? $_GET['tab'] : 'front_page_options';
 
@@ -675,7 +866,7 @@ function blda_admin_page() {
     $active_class_list_courses = $active_tab == "list_courses" ? "nav-tab-active" : "";
     $active_class_log = $active_tab == "log" ? "nav-tab-active" : "";
 
-	echo '
+    echo '
 		<div class="wrap">
 			<h2>Better LearnDash API</h2>
             <h2 class="nav-tab-wrapper">
@@ -685,8 +876,8 @@ function blda_admin_page() {
             </h2> <!-- nav-tab-wrapper -->
             <div class="blda-wrapper">
                 <div id="content" class="wrapper-cell">';
-                if ($active_tab == "front_page_options") {
-                    echo '
+    if ($active_tab == "front_page_options") {
+        echo '
                     ' . $error_ld_not_active . '
                     <h2>Better LearnDash API Opties</h2>
                     <p>Deze plugin geeft je mogelijkheden om Autorespond en LearnDash te koppelen</p>
@@ -699,12 +890,12 @@ function blda_admin_page() {
                     </ul>
 
                     <form action="options.php" method="post">';
-                    // outputs a unique nounce for our plugin options
-                    settings_fields('blda_plugin_options');
-                    // generates a unique hidden field with our form handling url
-                    @do_settings_fields('blda_plugin_options');
+        // outputs a unique nounce for our plugin options
+        settings_fields('blda_plugin_options');
+        // generates a unique hidden field with our form handling url
+        @do_settings_fields('blda_plugin_options', 'default');
 
-                    echo '<table class="form-table">
+        echo '<table class="form-table">
 
                             <tbody>
 
@@ -749,21 +940,21 @@ function blda_admin_page() {
 
                         </table>';
 
-                    @submit_button();
+        @submit_button();
 
-                    echo '</form>';
+        echo '</form>';
 
-                } elseif ($active_tab == "list_courses") {
-                    echo '
+    } elseif ($active_tab == "list_courses") {
+        echo '
                     ' . $error_ld_not_active . '
                     <h2>Lijst met beschikbare cursussen en bijbehorende ID\'s</h2>';
 
-                    $list_of_courses = blda_get_list_of_courses();
+        $list_of_courses = blda_get_list_of_courses();
 
-                    if ($list_of_courses) {
-                        $alternate = "";
+        if ($list_of_courses) {
+            $alternate = "";
 
-                        $table = '
+            $table = '
                         <table class="widefat">
                         <thead>
                             <tr>
@@ -774,14 +965,14 @@ function blda_admin_page() {
                         <tbody>
                         ';
 
-                        foreach ($list_of_courses as $course) {
-                            if ($alternate == "") {
-                                $alternate = "alternate";
-                            } else {
-                                $alternate = "";
-                            }
+            foreach ($list_of_courses as $course) {
+                if ($alternate == "") {
+                    $alternate = "alternate";
+                } else {
+                    $alternate = "";
+                }
 
-                            $row = '
+                $row = '
                                 <tr class="' . $alternate . '" id="course_row_' . $course['ID'] . '">
                                     <td>                                        
                                         ' . $course['ID'] . '
@@ -791,28 +982,28 @@ function blda_admin_page() {
                                     </td>
                             ';
 
-                            $table = $table.$row;
-                        }
+                $table = $table.$row;
+            }
 
-                        $table = $table."</tbody></table>";
+            $table = $table."</tbody></table>";
 
-                        //echo "<pre>"; print_r($list_of_courses); echo "</pre>";
+            //echo "<pre>"; print_r($list_of_courses); echo "</pre>";
 
-                        echo $table;
-                    } else {
-                        echo "<p>Geen LearnDash Courses gevonden</p>";
-                    }
+            echo $table;
+        } else {
+            echo "<p>Geen LearnDash Courses gevonden</p>";
+        }
 
-                } else {
-                    echo '
+    } else {
+        echo '
                     ' . $error_ld_not_active . '
                     <h2>Better LearnDash API Log</h2>
                     <p>';
-                    blda_show_log();
-                    echo "</p>";
-                }
+        blda_show_log();
+        echo "</p>";
+    }
 
-                echo '
+    echo '
                 </div>
                 <div id="sidebar" class="wrapper-cell">
                     <div class="sidebar_box info_box">
@@ -841,11 +1032,11 @@ function blda_admin_page() {
 // 9.1
 // hint: registers all our plugin options
 function blda_register_options() {
-	// plugin options
-	register_setting('blda_plugin_options', 'blda_option_check_if_user_exists');
-	register_setting('blda_plugin_options', 'blda_option_send_confirmation_email');
-	register_setting('blda_plugin_options', 'blda_option_destination_email');
-	register_setting('blda_plugin_options', 'blda_option_update_user_data');
+    // plugin options
+    register_setting('blda_plugin_options', 'blda_option_check_if_user_exists');
+    register_setting('blda_plugin_options', 'blda_option_send_confirmation_email');
+    register_setting('blda_plugin_options', 'blda_option_destination_email');
+    register_setting('blda_plugin_options', 'blda_option_update_user_data');
     register_setting('blda_plugin_options', 'blda_options_email_include_password');
     register_setting('blda_plugin_options', 'blda_options_api_key');
 
@@ -855,8 +1046,8 @@ function blda_register_options() {
 
 function blda_better_learndash_api () {
 
-	// Check if there's a simplewlmapi request
-	if(isset($_REQUEST['better_ld_api'])) {
+    // Check if there's a simplewlmapi request
+    if(isset($_REQUEST['better_ld_api'])) {
 
         if ( !blda_check_is_ld_active() ) {
             // If LearnDash is not active, disengage.
@@ -871,27 +1062,42 @@ function blda_better_learndash_api () {
         $useremail = isset($_REQUEST['useremail']) && $_REQUEST['useremail'] != "" && is_email($_REQUEST['useremail']) ? sanitize_email($_REQUEST['useremail']) : false;
         $username = isset($_REQUEST['username'])  && $_REQUEST['username'] != "" ? sanitize_text_field($_REQUEST['username']) : false;
         $userpass = isset($_REQUEST['userpass'])  && $_REQUEST['userpass'] != "" ? sanitize_text_field($_REQUEST['userpass']) : false;
-        $course_id = isset($_REQUEST['course_id']) &&  intval($_REQUEST['course_id']) > 0 ? intval($_REQUEST['course_id']) : false;
+        $course_id = isset($_REQUEST['course_id'])  && $_REQUEST['course_id'] != "" ? sanitize_text_field($_REQUEST['course_id']) : false;
         $user_first_name = isset($_REQUEST['fname'])  && $_REQUEST['fname'] != "" ? sanitize_text_field($_REQUEST['fname']) : false;
-        $user_last_name = isset($_REQUEST['lname'])  && $_REQUEST['lname'] != "" ? sanitize_text_field(['lname']) : false;
+        $user_last_name = isset($_REQUEST['lname'])  && $_REQUEST['lname'] != "" ? sanitize_text_field($_REQUEST['lname']) : false;
 
-		// Check if LearnDash is installed
+        // Check if LearnDash is installed
         if (blda_check_is_ld_active()) {
 
-			header('Content-type: application/json');
+            header('Content-type: application/json');
 
-			// Check if the passed api key matches wlm's api key
-			if(blda_check_api_key($api_key)) {
+            // Check if the passed api key matches wlm's api key
+            if(blda_check_api_key($api_key)) {
 
-			    $result = array();
+                $result = array();
 
                 $blda_options = blda_get_current_options();
 
-				// Check if the method passed is valid
-				if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses'))) {
+                // Check if the method passed is valid
+                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_courses_v2'))) {
 
-					switch ($better_ld_api_method) {
-						case 'get_courses':
+                    switch ($better_ld_api_method) {
+                        case 'get_courses_v2':
+                            // Give list of courses with their ID's
+
+                            $course = blda_get_courses($username);
+
+                            if ($course) {
+                                echo json_encode(array('success' => 1, 'message' => "Course content", 'course' => $course));
+                                $result['message'] = "Course content sent";
+                                $result['status'] = "Success";
+                            } else {
+                                echo json_encode(array('success' => 1, 'message' => "No course found"));
+                                $result['message'] =  "No course found";
+                                $result['status'] = "Success";
+                            }
+                            break;
+                        case 'get_courses':
                             // Give list of courses with their ID's
 
                             $list_of_courses = blda_get_list_of_courses();
@@ -905,10 +1111,10 @@ function blda_better_learndash_api () {
                                 $result['message'] =  "No courses found";
                                 $result['status'] = "Success";
                             }
-							break;
-						case 'remove_member_from_course':
+                            break;
+                        case 'remove_member_from_course':
 
-						    if ($useremail) {
+                            if ($useremail) {
                                 $exists = email_exists($useremail);
                             } elseif ($username) {
                                 $exists = email_exists($username);
@@ -923,11 +1129,11 @@ function blda_better_learndash_api () {
 
                                 if ($action_result) {
                                     echo json_encode(array('success' => 1, 'message' => $action_result));
-                                    $result['message'] = $result;
+                                    $result['message'] = $action_result;
                                     $result['status'] = "Success";
                                 } else {
-                                    echo json_encode(array('success' => 0, 'message' => "Error encountered while removing user " . $received_user_id . " from course " . $course_id));
-                                    $result['message'] = "Error encountered while removing user " . $received_user_id . " from course " . $course_id;
+                                    echo json_encode(array('success' => 0, 'message' => "Error encountered while removing user " . $received_user_id . " from course(s) " . blda_lookup_course_name_by_id($course_id)));
+                                    $result['message'] = "Error encountered while removing user " . $received_user_id . " from course(s) " . blda_lookup_course_name_by_id($course_id);
                                     $result['status'] = "Error";
                                 }
                             } elseif (!$course_id || (!$useremail && !$username)) {
@@ -940,18 +1146,18 @@ function blda_better_learndash_api () {
                                 $result['status'] = "Error";
                             }
 
-							break;
-						case 'add_new_member':
+                            break;
+                        case 'add_new_member':
 
-							if(!$course_id || !$username || !$useremail || !$userpass) {
-								echo json_encode( array( 'success' => 0, 'message' => 'add_new_member method needs the the following data: username, useremail, userpass, course id'));
+                            if(!$course_id || !$username || !$useremail || !$userpass) {
+                                echo json_encode( array( 'success' => 0, 'message' => 'add_new_member method needs the the following data: username, useremail, userpass, course id'));
                                 $result['message'] = "Request add member, but no Course ID or user login or email or password received.";
                                 $result['status'] = "Error";
-							} else {
-								$exists = email_exists($useremail);
+                            } else {
+                                $exists = email_exists($useremail);
                                 $course_name = blda_lookup_course_name_by_id($course_id);
 
-								if ( $exists ) {
+                                if ( $exists ) {
                                     //User already exists. Add level to user
                                     $received_user_id = $exists;
 
@@ -962,8 +1168,8 @@ function blda_better_learndash_api () {
                                         $result['message'] = $action_result;
                                         $result['status'] = "Success";
                                     } else {
-                                        echo json_encode(array('success' => 0, 'message' => "Error encountered while adding user " . $received_user_id . " to course " . $course_name." (".$course_id).")");
-                                        $result['message'] = "Error encountered while adding user " . $received_user_id . " to course " . $course_id;
+                                        echo json_encode(array('success' => 0, 'message' => "Error encountered while adding user " . $received_user_id . " to course(s) " . blda_lookup_course_name_by_id($course_id)));
+                                        $result['message'] = "Error encountered while adding user " . $received_user_id . " to course(s) " . blda_lookup_course_name_by_id($course_id);
                                         $result['status'] = "Error";
                                     }
 
@@ -971,9 +1177,9 @@ function blda_better_learndash_api () {
                                         $action = "add_level";
                                         blda_send_email_confirmation($action, $useremail, $userpass, $course_name);
                                     }
-								} else {
+                                } else {
                                     //User does not already exists. Add user
-									$member_id = wp_create_user( $username, $userpass, $useremail);
+                                    $member_id = wp_create_user( $username, $userpass, $useremail);
 
                                     $add_user_result = "Added user to WordPress";
 
@@ -992,7 +1198,7 @@ function blda_better_learndash_api () {
                                         $result['message'] = $total_result;
                                         $result['status'] = "Success";
                                     } else {
-                                        $total_result = $add_user_result.". ".$result_user_data.". Error encountered while adding user " . $member_id . " to course " .$course_name." (".$course_id.")".$action_result;
+                                        $total_result = $add_user_result.". ".$result_user_data.". Error encountered while adding user " . $member_id . " to course(s) " .blda_lookup_course_name_by_id($course_id);
 
                                         echo json_encode(array('success' => 0, 'message' => $total_result));
                                         $result['message'] = $total_result;
@@ -1004,32 +1210,32 @@ function blda_better_learndash_api () {
 
                                         blda_send_email_confirmation($action, $username, $userpass, $course_name);
                                     }
-								}
-							}
+                                }
+                            }
 
                             blda_log_event(serialize($_REQUEST), $result);
 
-							break;
-					}
-				} else {
-					echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses' ));
-                    $result['message'] = "Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses";
+                            break;
+                    }
+                } else {
+                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses' ));
+                    $result['message'] = "Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses";
                     $result['status'] = "Error";
-				}
-			} else {
-				echo  json_encode( array( 'success' => 0, 'message' => 'Wrong API Key' ));
+                }
+            } else {
+                echo  json_encode( array( 'success' => 0, 'message' => 'Wrong API Key' ));
                 $result['message'] = "Wrong API Key";
                 $result['status'] = "Error";
-			}
+            }
 
             blda_log_event(serialize($_REQUEST), $result);
 
-			exit;
-		} else {
+            exit;
+        } else {
             $result['message'] = "Request received, but LearnDash is not active. Better LearnDash API ignored request.";
             $result['status'] = "Error";
             blda_log_event(serialize($_REQUEST), $result);
         }
-	}
+    }
 
 }
