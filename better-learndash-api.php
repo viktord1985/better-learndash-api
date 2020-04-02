@@ -1095,9 +1095,9 @@ function blda_better_learndash_api () {
                                 $result['message'] = "Course content sent";
                                 $result['status'] = "Success";
                             } else {
-                                echo json_encode(array('success' => 1, 'message' => "No course found"));
+                                echo json_encode(array('success' => 0, 'message' => "No course found"));
                                 $result['message'] =  "No course found";
-                                $result['status'] = "Success";
+                                $result['status'] = "Error";
                             }
                             break;
                         case 'get_courses':
