@@ -472,11 +472,15 @@ function blda_get_courses($username)
 
                 $course["access"] = in_array(intval(get_the_ID()), $enrolled_courses);
 
-                $ld_course_steps_object = LDLMS_Factory_Post::course_steps(intval(get_the_ID()));
-                $course_steps = $ld_course_steps_object->get_steps('t');
-                $course["steps"] = $course_steps;
+                //$ld_course_steps_object = LDLMS_Factory_Post::course_steps(intval(get_the_ID()));
+                //$course_steps = $ld_course_steps_object->get_steps('t');
+                //$course["steps"] = $course_steps;
 
-                $ld_lessons_object = blda_get_lessons(get_the_ID());
+                //$course_progress = get_user_meta( $user->ID, '_sfwd-course_progress', true );
+                //$course["course_progress"] = $course_progress;
+                $course["status"] = learndash_course_status(get_the_ID(), $user->ID);
+
+                $ld_lessons_object = blda_get_lessons( $user->ID, get_the_ID());
                 $course["lessons"] = $ld_lessons_object;
 
                 $courses[] = $course;
@@ -497,7 +501,7 @@ function blda_get_courses($username)
 // Hint: get lessons by course_id
 // Example: learndash_get_lesson_list( 538, array( 'num' => 0 ));
 // Example: learndash_get_course_lessons_list(538);
-function blda_get_lessons($course_id)
+function blda_get_lessons($user_id, $course_id)
 {
 
     if (blda_check_is_ld_active()) {
@@ -533,6 +537,8 @@ function blda_get_lessons($course_id)
 
                 //$ld_topics_object = blda_get_topics(get_the_ID());
                 //$lesson["topics"] = $ld_topics_object;
+
+                $lesson["is_complete"] = learndash_is_lesson_complete($user_id, get_the_ID(), $course_id);
 
                 $lessons[] = $lesson;
             }
@@ -1068,6 +1074,7 @@ function blda_better_learndash_api () {
         $course_id = isset($_REQUEST['course_id'])  && $_REQUEST['course_id'] != "" ? sanitize_text_field($_REQUEST['course_id']) : false;
         $user_first_name = isset($_REQUEST['fname'])  && $_REQUEST['fname'] != "" ? sanitize_text_field($_REQUEST['fname']) : false;
         $user_last_name = isset($_REQUEST['lname'])  && $_REQUEST['lname'] != "" ? sanitize_text_field($_REQUEST['lname']) : false;
+        $post_id = isset($_REQUEST['post_id'])  && $_REQUEST['post_id'] != "" ? sanitize_text_field($_REQUEST['post_id']) : false;
 
         // Check if LearnDash is installed
         if (blda_check_is_ld_active()) {
@@ -1082,7 +1089,7 @@ function blda_better_learndash_api () {
                 $blda_options = blda_get_current_options();
 
                 // Check if the method passed is valid
-                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_courses_v2'))) {
+                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_courses_v2', 'mark_completed'))) {
 
                     switch ($better_ld_api_method) {
                         case 'get_courses_v2':
@@ -1113,6 +1120,48 @@ function blda_better_learndash_api () {
                                 echo json_encode(array('success' => 1, 'message' => "No courses found"));
                                 $result['message'] =  "No courses found";
                                 $result['status'] = "Success";
+                            }
+                            break;
+                        case 'mark_completed';
+                            $user_id = '';
+                            if ($useremail) {
+                                $exists = email_exists($useremail);
+                                if ($exists) {
+                                    $user = get_user_by('email', $useremail);
+                                    $user_id = $user->ID;
+                                }
+                            } elseif ($username) {
+                                $exists = username_exists($username);
+                                if ($exists) {
+                                    $user = get_user_by('login', $username);
+                                    $user_id = $user->ID;
+                                }
+                            } else {
+                                $exists = false;
+                            }
+
+                            if ($exists && $post_id) {
+                                $received_user_id = $exists;
+
+                                $action_result = learndash_process_mark_complete($user_id, $post_id);
+
+                                if ($action_result) {
+                                    echo json_encode(array('success' => 1, 'message' => $action_result));
+                                    $result['message'] = $action_result;
+                                    $result['status'] = "Success";
+                                } else {
+                                    echo json_encode(array('success' => 0, 'message' => "Error encountered while mark complete " . $received_user_id . " from post " . $post_id));
+                                    $result['message'] = "Error encountered while mark complete " . $received_user_id . " from post " . $post_id;
+                                    $result['status'] = "Error";
+                                }
+                            } elseif (!$post_id || (!$useremail && !$username)) {
+                                echo json_encode(array('success' => 0, 'message' => 'mark_completed method needs the Post ID and the email address or username of the user'));
+                                $result['message'] = "Request to mark complete received, but no Post ID or username or user email received.";
+                                $result['status'] = "Error";
+                            } elseif (!$exists) {
+                                echo  json_encode( array( 'success' => 0, 'message' => 'User not found' ));
+                                $result['message'] = "Request to mark complete received, but user not found.";
+                                $result['status'] = "Error";
                             }
                             break;
                         case 'remove_member_from_course':
@@ -1221,7 +1270,7 @@ function blda_better_learndash_api () {
                             break;
                     }
                 } else {
-                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses' ));
+                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses_v2, mark_completed' ));
                     $result['message'] = "Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses";
                     $result['status'] = "Error";
                 }
