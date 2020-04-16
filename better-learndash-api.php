@@ -1143,7 +1143,14 @@ function blda_better_learndash_api () {
                             if ($exists && $post_id) {
                                 $received_user_id = $exists;
 
-                                $action_result = learndash_process_mark_complete($user_id, $post_id);
+                                $ids = explode("|", $post_id);
+                                if (isset($ids) && count($ids) != 0) {
+                                    for ($i = 0; $i < count($ids); $i++) {
+                                        $action_result = learndash_process_mark_complete($user_id, $ids[$i]);
+                                    }
+                                } else {
+                                    $action_result = learndash_process_mark_complete($user_id, $post_id);
+                                }
 
                                 if ($action_result) {
                                     echo json_encode(array('success' => 1, 'message' => $action_result));
