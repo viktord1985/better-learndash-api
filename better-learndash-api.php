@@ -1089,7 +1089,7 @@ function blda_better_learndash_api () {
                 $blda_options = blda_get_current_options();
 
                 // Check if the method passed is valid
-                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_courses_v2', 'mark_completed'))) {
+                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_courses_v2', 'mark_completed', 'add_to_course'))) {
 
                     switch ($better_ld_api_method) {
                         case 'get_courses_v2':
@@ -1122,7 +1122,7 @@ function blda_better_learndash_api () {
                                 $result['status'] = "Success";
                             }
                             break;
-                        case 'mark_completed';
+                        case 'mark_completed':
                             $user_id = '';
                             if ($useremail) {
                                 $exists = email_exists($useremail);
@@ -1208,15 +1208,15 @@ function blda_better_learndash_api () {
                             break;
                         case 'add_new_member':
 
-                            if(!$course_id || !$username || !$useremail || !$userpass) {
-                                echo json_encode( array( 'success' => 0, 'message' => 'add_new_member method needs the the following data: username, useremail, userpass, course id'));
+                            if (!$course_id || !$username || !$useremail || !$userpass) {
+                                echo json_encode(array('success' => 0, 'message' => 'add_new_member method needs the the following data: username, useremail, userpass, course id'));
                                 $result['message'] = "Request add member, but no Course ID or user login or email or password received.";
                                 $result['status'] = "Error";
                             } else {
                                 $exists = email_exists($useremail);
                                 $course_name = blda_lookup_course_name_by_id($course_id);
 
-                                if ( $exists ) {
+                                if ($exists) {
                                     //User already exists. Add level to user
                                     $received_user_id = $exists;
 
@@ -1238,7 +1238,7 @@ function blda_better_learndash_api () {
                                     }
                                 } else {
                                     //User does not already exists. Add user
-                                    $member_id = wp_create_user( $username, $userpass, $useremail);
+                                    $member_id = wp_create_user($username, $userpass, $useremail);
 
                                     $add_user_result = "Added user to WordPress";
 
@@ -1251,13 +1251,13 @@ function blda_better_learndash_api () {
                                     $action_result = blda_add_user_to_course($member_id, $course_id);
 
                                     if ($action_result) {
-                                        $total_result = $add_user_result.". ".$result_user_data.". ".$action_result;
+                                        $total_result = $add_user_result . ". " . $result_user_data . ". " . $action_result;
 
                                         echo json_encode(array('success' => 1, 'message' => $total_result, 'new_member' => 1));
                                         $result['message'] = $total_result;
                                         $result['status'] = "Success";
                                     } else {
-                                        $total_result = $add_user_result.". ".$result_user_data.". Error encountered while adding user " . $member_id . " to course(s) " .blda_lookup_course_name_by_id($course_id);
+                                        $total_result = $add_user_result . ". " . $result_user_data . ". Error encountered while adding user " . $member_id . " to course(s) " . blda_lookup_course_name_by_id($course_id);
 
                                         echo json_encode(array('success' => 0, 'message' => $total_result));
                                         $result['message'] = $total_result;
@@ -1275,10 +1275,44 @@ function blda_better_learndash_api () {
                             blda_log_event(serialize($_REQUEST), $result);
 
                             break;
+                        case 'add_to_course':
+
+                            if (!$course_id || !$username) {
+                                echo json_encode(array('success' => 0, 'message' => 'add_to_course method needs the the following data: username, course id'));
+                                $result['message'] = "Request add member to course, but no Course ID or user login received.";
+                                $result['status'] = "Error";
+                            } else {
+                                $exists = username_exists($username);
+
+                                if ($exists) {
+                                    //User already exists. Add level to user
+                                    $received_user_id = $exists;
+
+                                    $action_result = blda_add_user_to_course($received_user_id, $course_id);
+
+                                    if ($action_result) {
+                                        echo json_encode(array('success' => 1, 'message' => $action_result, 'new_member' => 0));
+                                        $result['message'] = $action_result;
+                                        $result['status'] = "Success";
+                                    } else {
+                                        echo json_encode(array('success' => 0, 'message' => "Error encountered while adding user " . $received_user_id . " to course(s) " . blda_lookup_course_name_by_id($course_id)));
+                                        $result['message'] = "Error encountered while adding user " . $received_user_id . " to course(s) " . blda_lookup_course_name_by_id($course_id);
+                                        $result['status'] = "Error";
+                                    }
+                                } else {
+                                    echo json_encode(array('success' => 0, 'message' => 'add_to_course -> User not found'));
+                                    $result['message'] = "Request add member to course -> user not found.";
+                                    $result['status'] = "Error";
+                                }
+                            }
+
+                            blda_log_event(serialize($_REQUEST), $result);
+
+                            break;
                     }
                 } else {
-                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses_v2, mark_completed' ));
-                    $result['message'] = "Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses";
+                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses_v2, mark_completed, add_to_course' ));
+                    $result['message'] = "Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses, add_to_course";
                     $result['status'] = "Error";
                 }
             } else {
