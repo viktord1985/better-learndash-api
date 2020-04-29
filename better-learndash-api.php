@@ -1293,6 +1293,14 @@ function blda_better_learndash_api () {
 
                                     $action_result = blda_add_user_to_course($received_user_id, $course_id);
 
+                                    if ($course_id === '2935') {
+                                        $course_id = '4097';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    } else if ($course_id === '4097') {
+                                        $course_id = '2935';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    }
+
                                     if ($action_result) {
                                         echo json_encode(array('success' => 1, 'message' => $action_result, 'new_member' => 0));
                                         $result['message'] = $action_result;
