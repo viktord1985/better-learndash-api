@@ -441,12 +441,13 @@ function blda_get_list_of_courses ($array = true, $include_title = true) {
 
 // 5.10a
 // Hint: get course
-function blda_get_courses($username)
+function blda_get_courses($username, $lang)
 {
 
     if (blda_check_is_ld_active()) {
         $course_query_args = array(
             'post_type' => 'sfwd-courses',
+            'lang' => $lang,
             'fields' => 'ids',
             'nopaging' => true,
             'orderby' => 'ID',
@@ -480,7 +481,7 @@ function blda_get_courses($username)
                 //$course["course_progress"] = $course_progress;
                 $course["status"] = learndash_course_status(get_the_ID(), $user->ID);
 
-                $ld_lessons_object = blda_get_lessons( $user->ID, get_the_ID());
+                $ld_lessons_object = blda_get_lessons( $user->ID, get_the_ID(), $lang);
                 $course["lessons"] = $ld_lessons_object;
 
                 $courses[] = $course;
@@ -501,7 +502,7 @@ function blda_get_courses($username)
 // Hint: get lessons by course_id
 // Example: learndash_get_lesson_list( 538, array( 'num' => 0 ));
 // Example: learndash_get_course_lessons_list(538);
-function blda_get_lessons($user_id, $course_id)
+function blda_get_lessons($user_id, $course_id, $lang)
 {
 
     if (blda_check_is_ld_active()) {
@@ -510,6 +511,7 @@ function blda_get_lessons($user_id, $course_id)
 
         $lessons_query_args = array(
             'post_type' => 'sfwd-lessons',
+            'lang' => $lang,
             'meta_key' => 'course_id',
             'meta_value' => $course_id,
             'fields' => 'ids',
@@ -1075,6 +1077,7 @@ function blda_better_learndash_api () {
         $user_first_name = isset($_REQUEST['fname'])  && $_REQUEST['fname'] != "" ? sanitize_text_field($_REQUEST['fname']) : false;
         $user_last_name = isset($_REQUEST['lname'])  && $_REQUEST['lname'] != "" ? sanitize_text_field($_REQUEST['lname']) : false;
         $post_id = isset($_REQUEST['post_id'])  && $_REQUEST['post_id'] != "" ? sanitize_text_field($_REQUEST['post_id']) : false;
+        $lang = isset($_REQUEST['lang'])  && $_REQUEST['lang'] != "" ? sanitize_text_field($_REQUEST['lang']) : false;
 
         // Check if LearnDash is installed
         if (blda_check_is_ld_active()) {
@@ -1095,7 +1098,7 @@ function blda_better_learndash_api () {
                         case 'get_courses_v2':
                             // Give list of courses with their ID's
 
-                            $course = blda_get_courses($username);
+                            $course = blda_get_courses($username, $lang ? $lang : 'en');
 
                             if ($course) {
                                 echo json_encode(array('success' => 1, 'message' => "Course content", 'course' => $course));
