@@ -467,9 +467,17 @@ function blda_get_courses($username, $lang)
                 $course_query->the_post();
                 $course["ID"] = get_the_ID();
                 $course["title"] = get_the_title();
-                //$course["content"] = get_the_content();
+                $course["thumbnail_img_url"] = get_the_post_thumbnail_url(get_the_ID(),'thumbnail');
+                $course["full_img_url"] = get_the_post_thumbnail_url(get_the_ID(),'full');
+                $course["content"] = get_the_content();
                 $course["content_stripped"] = wp_strip_all_tags(get_the_content());
                 $course["course_price_type"] = learndash_get_setting(get_the_ID(), 'course_price_type' );
+
+                if (get_the_ID() == 2935 || get_the_ID() == 4097) {
+                    $course["apple_product_id"]= "2935_4097";
+                } else {
+                    $course["apple_product_id"]= get_the_ID();
+                }
 
                 $course["access"] = in_array(intval(get_the_ID()), $enrolled_courses);
 
@@ -530,7 +538,7 @@ function blda_get_lessons($user_id, $course_id, $lang)
                 $lessons_query->the_post();
                 $lesson["ID"] = get_the_ID();
                 $lesson["title"] = get_the_title();
-                //$lesson["content"] = get_the_content();
+                $lesson["content"] = get_the_content();
                 $lesson["content_stripped"] = wp_strip_all_tags(get_the_content());
 
                 $lesson["lesson_video_enabled"] = learndash_get_setting(get_the_ID(), 'lesson_video_enabled' );
