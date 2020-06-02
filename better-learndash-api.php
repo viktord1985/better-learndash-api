@@ -538,6 +538,8 @@ function blda_get_lessons($user_id, $course_id, $lang)
                 $lessons_query->the_post();
                 $lesson["ID"] = get_the_ID();
                 $lesson["title"] = get_the_title();
+                $lesson["thumbnail_img_url"] = get_the_post_thumbnail_url(get_the_ID(),'thumbnail');
+                $lesson["full_img_url"] = get_the_post_thumbnail_url(get_the_ID(),'full');
                 $lesson["content"] = get_the_content();
                 $lesson["content_stripped"] = wp_strip_all_tags(get_the_content());
 
