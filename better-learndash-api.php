@@ -1089,6 +1089,10 @@ function blda_better_learndash_api () {
         $post_id = isset($_REQUEST['post_id'])  && $_REQUEST['post_id'] != "" ? sanitize_text_field($_REQUEST['post_id']) : false;
         $lang = isset($_REQUEST['lang'])  && $_REQUEST['lang'] != "" ? sanitize_text_field($_REQUEST['lang']) : false;
 
+        $data = isset($_REQUEST['data'])  && $_REQUEST['data'] != "" ? sanitize_text_field($_REQUEST['data']) : false;
+        $time = isset($_REQUEST['time'])  && $_REQUEST['time'] != "" ? sanitize_text_field($_REQUEST['time']) : false;
+        $phone = isset($_REQUEST['phone'])  && $_REQUEST['phone'] != "" ? sanitize_text_field($_REQUEST['phone']) : false;
+
         // Check if LearnDash is installed
         if (blda_check_is_ld_active()) {
 
@@ -1102,9 +1106,37 @@ function blda_better_learndash_api () {
                 $blda_options = blda_get_current_options();
 
                 // Check if the method passed is valid
-                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_courses_v2', 'mark_completed', 'add_to_course'))) {
+                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_courses_v2', 'mark_completed', 'add_to_course', 'one_to_one_session'))) {
 
                     switch ($better_ld_api_method) {
+                        case 'one_to_one_session':
+
+                            if (!$data || !$time || !$user_first_name || !$user_last_name || !$useremail || !$phone) {
+                                echo json_encode(array('success' => 0, 'message' => 'one_to_one_session method needs the the following data: data, time, fname, lname, useremail, phone'));
+                                $result['message'] = "Request add member to course, but no data or no time or no fname or no lname or no useremail or no phone received.";
+                                $result['status'] = "Error";
+                            } else {
+
+                                $contact_email = "viktor.derk1985@gmail.com," . get_option('admin_email');
+
+                                $subject = "New 1-2-1 request";
+
+                                $message_formatted = '<html><head><title>' . $subject . '</title></head><body>'
+                                    . $user_first_name . ' ' . $user_last_name . ' ' . $phone . ' created a request at ' . $data . '-' . $time . '</body></html>';
+
+                                $headers = 'MIME-Version: 1.0' . "\r\n";
+                                $headers .= 'Content-type: text/html; charset=utf-8' . "\r\n";
+                                $headers .= 'To: ' . $contact_email . "\r\n";
+                                $headers .= 'From: ' . (!empty($user_first_name) ? $user_first_name . ' <' . $useremail . '>' : $useremail) . "\r\n";
+
+                                mail($contact_email, $subject, $message_formatted, $headers);
+
+                                $action_result = "Success";
+                                echo json_encode(array('success' => 1, 'message' => $action_result));
+                                $result['message'] = $action_result;
+                                $result['status'] = "Success";
+                            }
+                            break;
                         case 'get_courses_v2':
                             // Give list of courses with their ID's
 
@@ -1332,8 +1364,8 @@ function blda_better_learndash_api () {
                             break;
                     }
                 } else {
-                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses_v2, mark_completed, add_to_course' ));
-                    $result['message'] = "Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses, add_to_course";
+                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses_v2, mark_completed, add_to_course, one_to_one_session' ));
+                    $result['message'] = "Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses, add_to_course, one_to_one_session";
                     $result['status'] = "Error";
                 }
             } else {
