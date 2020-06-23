@@ -1198,8 +1198,8 @@ function blda_better_learndash_api () {
                                 }
 
                                 if ($action_result) {
-                                    echo json_encode(array('success' => 1, 'message' => $action_result));
-                                    $result['message'] = $action_result;
+                                    echo json_encode(array('success' => 1, 'message' => strval($action_result)));
+                                    $result['message'] = strval($action_result);
                                     $result['status'] = "Success";
                                 } else {
                                     echo json_encode(array('success' => 0, 'message' => "Error encountered while mark complete " . $received_user_id . " from post " . $post_id));
