@@ -439,6 +439,56 @@ function blda_get_list_of_courses ($array = true, $include_title = true) {
 
 }
 
+function blda_get_sessions($lang)
+{
+
+    $session_query_args = array(
+        'post_type' => 'product',
+        'lang' => $lang,
+        'post_status' => 'publish',
+        'nopaging' => true,
+        'orderby' => 'ID',
+        'order' => 'ASC',
+        'product_cat' => 'sessions,sessii'
+//        'tax_query' => array(
+//            'relation' => 'OR',
+//            array(
+//                'taxonomy' => 'product_cat',
+//                'field' => 'slug',
+//                'terms' => 'sessions'
+//            ),
+//            array(
+//                'taxonomy' => 'product_cat',
+//                'field' => 'slug',
+//                'terms' => 'sessii'
+//            )
+//        ),
+    );
+
+    $sessions_query = new WP_Query($session_query_args);
+
+    if ($sessions_query->have_posts()) {
+
+        $sessions = array();
+
+        while ($sessions_query->have_posts()) {
+            $sessions_query->the_post();
+            $session["ID"] = get_the_ID();
+            $session["title"] = get_the_title();
+            $session["thumbnail_img_url"] = get_the_post_thumbnail_url(get_the_ID(),'thumbnail');
+            $session["full_img_url"] = get_the_post_thumbnail_url(get_the_ID(),'full');
+            $session["content"] = get_the_content();
+            $sessions[] = $session;
+        }
+    } else {
+        $sessions = false;
+    }
+
+    wp_reset_postdata();
+
+    return $sessions;
+}
+
 // 5.10a
 // Hint: get course
 function blda_get_courses($username, $lang)
@@ -1106,7 +1156,7 @@ function blda_better_learndash_api () {
                 $blda_options = blda_get_current_options();
 
                 // Check if the method passed is valid
-                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_courses_v2', 'mark_completed', 'add_to_course', 'one_to_one_session'))) {
+                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_sessions', 'get_courses_v2', 'mark_completed', 'add_to_course', 'one_to_one_session'))) {
 
                     switch ($better_ld_api_method) {
                         case 'one_to_one_session':
@@ -1149,6 +1199,20 @@ function blda_better_learndash_api () {
                             } else {
                                 echo json_encode(array('success' => 0, 'message' => "No course found"));
                                 $result['message'] =  "No course found";
+                                $result['status'] = "Error";
+                            }
+                            break;
+                        case 'get_sessions':
+
+                            $sessions = blda_get_sessions($lang ? $lang : 'en');
+
+                            if ($sessions) {
+                                echo json_encode(array('success' => 1, 'message' => "Sessions content", 'course' => $sessions));
+                                $result['message'] = "Sessions content sent";
+                                $result['status'] = "Success";
+                            } else {
+                                echo json_encode(array('success' => 0, 'message' => "No sessions found"));
+                                $result['message'] =  "No sessions found";
                                 $result['status'] = "Error";
                             }
                             break;
@@ -1364,7 +1428,7 @@ function blda_better_learndash_api () {
                             break;
                     }
                 } else {
-                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses_v2, mark_completed, add_to_course, one_to_one_session' ));
+                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_sessions, get_courses_v2, mark_completed, add_to_course, one_to_one_session' ));
                     $result['message'] = "Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses, add_to_course, one_to_one_session";
                     $result['status'] = "Error";
                 }
