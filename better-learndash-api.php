@@ -478,6 +478,13 @@ function blda_get_sessions($lang)
             $session["thumbnail_img_url"] = get_the_post_thumbnail_url(get_the_ID(),'thumbnail');
             $session["full_img_url"] = get_the_post_thumbnail_url(get_the_ID(),'full');
             $session["content"] = get_the_content();
+            if (get_the_ID() == 3624 || get_the_ID() == 3989) {
+                $session["apple_product_id"]= "3624_3989";
+            } else if (get_the_ID() == 3478 || get_the_ID() == 3991) {
+                $session["apple_product_id"]= "3478_3991";
+            } else {
+                $session["apple_product_id"]= get_the_ID();
+            }
             $sessions[] = $session;
         }
     } else {
@@ -1141,7 +1148,9 @@ function blda_better_learndash_api () {
 
         $data = isset($_REQUEST['data'])  && $_REQUEST['data'] != "" ? sanitize_text_field($_REQUEST['data']) : false;
         $time = isset($_REQUEST['time'])  && $_REQUEST['time'] != "" ? sanitize_text_field($_REQUEST['time']) : false;
-        $phone = isset($_REQUEST['phone'])  && $_REQUEST['phone'] != "" ? sanitize_text_field($_REQUEST['phone']) : false;
+        $session_id = isset($_REQUEST['session_id'])  && $_REQUEST['session_id'] != "" ? sanitize_text_field($_REQUEST['session_id']) : false;
+        $session_name = isset($_REQUEST['session_name'])  && $_REQUEST['session_name'] != "" ? sanitize_text_field($_REQUEST['session_name']) : false;
+        $transaction_id = isset($_REQUEST['transaction_id'])  && $_REQUEST['transaction_id'] != "" ? sanitize_text_field($_REQUEST['transaction_id']) : false;
 
         // Check if LearnDash is installed
         if (blda_check_is_ld_active()) {
@@ -1161,9 +1170,9 @@ function blda_better_learndash_api () {
                     switch ($better_ld_api_method) {
                         case 'one_to_one_session':
 
-                            if (!$data || !$time || !$user_first_name || !$user_last_name || !$useremail || !$phone) {
-                                echo json_encode(array('success' => 0, 'message' => 'one_to_one_session method needs the the following data: data, time, fname, lname, useremail, phone'));
-                                $result['message'] = "Request add member to course, but no data or no time or no fname or no lname or no useremail or no phone received.";
+                            if (!$data || !$time || !$user_first_name || !$user_last_name || !$useremail || !$session_id || !$session_name || !$transaction_id) {
+                                echo json_encode(array('success' => 0, 'message' => 'one_to_one_session method needs the the following data: data, time, fname, lname, useremail, session_id, session_name, transaction_id'));
+                                $result['message'] = "Request add member to course, but no data or no time or no fname or no lname or no useremail or no session_id or no session_name or no transaction_id received.";
                                 $result['status'] = "Error";
                             } else {
 
@@ -1172,7 +1181,7 @@ function blda_better_learndash_api () {
                                 $subject = "New 1-2-1 request";
 
                                 $message_formatted = '<html><head><title>' . $subject . '</title></head><body>'
-                                    . $user_first_name . ' ' . $user_last_name . ' ' . $phone . ' created a request at ' . $data . '-' . $time . '</body></html>';
+                                    . $user_first_name . ' ' . $user_last_name . ' created a request at ' . $data . '-' . $time . ' session name: ' . $session_name . '(#' . $session_id . ') and transaction ID: ' . $transaction_id . '</body></html>';
 
                                 $headers = 'MIME-Version: 1.0' . "\r\n";
                                 $headers .= 'Content-type: text/html; charset=utf-8' . "\r\n";
