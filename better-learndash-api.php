@@ -1152,6 +1152,8 @@ function blda_better_learndash_api () {
         $session_name = isset($_REQUEST['session_name'])  && $_REQUEST['session_name'] != "" ? sanitize_text_field($_REQUEST['session_name']) : false;
         $transaction_id = isset($_REQUEST['transaction_id'])  && $_REQUEST['transaction_id'] != "" ? sanitize_text_field($_REQUEST['transaction_id']) : false;
 
+        $avatar_data = isset($_REQUEST['avatar_data'])  && $_REQUEST['avatar_data'] != "" ? sanitize_text_field($_REQUEST['avatar_data']) : false;
+
         // Check if LearnDash is installed
         if (blda_check_is_ld_active()) {
 
@@ -1165,7 +1167,7 @@ function blda_better_learndash_api () {
                 $blda_options = blda_get_current_options();
 
                 // Check if the method passed is valid
-                if(in_array($better_ld_api_method, array('add_new_member', 'remove_member_from_course', 'get_courses', 'get_sessions', 'get_courses_v2', 'mark_completed', 'add_to_course', 'one_to_one_session'))) {
+                if(in_array($better_ld_api_method, array('set_avatar', 'add_new_member', 'remove_member_from_course', 'get_courses', 'get_sessions', 'get_courses_v2', 'mark_completed', 'add_to_course', 'one_to_one_session'))) {
 
                     switch ($better_ld_api_method) {
                         case 'one_to_one_session':
@@ -1195,6 +1197,25 @@ function blda_better_learndash_api () {
                                 $result['message'] = $action_result;
                                 $result['status'] = "Success";
                             }
+                            break;
+                        case 'set_avatar' :
+
+                            if (!$username || !$avatar_data) {
+                                echo json_encode(array('success' => 0, 'message' => 'set_avatar method needs the the following data: username, avatar_data'));
+                                $result['message'] = "Request add member, but no username or no avatar_data received.";
+                                $result['status'] = "Error";
+                            } else {
+
+                                $name = '/user_avatar_'. $username . '.png';
+                                $upload = wp_upload_dir();
+                                $file = $upload['basedir'] . $name;
+                                file_put_contents($file, base64_decode($avatar_data));
+
+                                echo json_encode(array('success' => 1, 'message' => "Success", "user_avatar_url" => $upload['baseurl'] . $name));
+                                $result['message'] = "Success";
+                                $result['status'] = "Success";
+                            }
+
                             break;
                         case 'get_courses_v2':
                             // Give list of courses with their ID's
@@ -1437,8 +1458,8 @@ function blda_better_learndash_api () {
                             break;
                     }
                 } else {
-                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_sessions, get_courses_v2, mark_completed, add_to_course, one_to_one_session' ));
-                    $result['message'] = "Wrong method, supported methods are add_new_member, remove_member_from_course, get_courses, get_courses, add_to_course, one_to_one_session";
+                    echo  json_encode( array( 'success' => 0, 'message' => 'Wrong method, supported methods are set_avatar, add_new_member, remove_member_from_course, get_courses, get_sessions, get_courses_v2, mark_completed, add_to_course, one_to_one_session' ));
+                    $result['message'] = "Wrong method, supported methods are set_avatar, add_new_member, remove_member_from_course, get_courses, get_courses, add_to_course, one_to_one_session";
                     $result['status'] = "Error";
                 }
             } else {
