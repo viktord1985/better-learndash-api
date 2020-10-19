@@ -479,9 +479,17 @@ function blda_get_sessions($lang)
             $session["full_img_url"] = get_the_post_thumbnail_url(get_the_ID(),'full');
             $session["content"] = get_the_content();
             if (get_the_ID() == 3624 || get_the_ID() == 3989) {
-                $session["apple_product_id"]= "3624_3989";
+                $session["apple_product_id"]= "3624_3989"; //+
+            } else if (get_the_ID() == 5340 || get_the_ID() == 5341) {
+                $session["apple_product_id"]= "5340_5341"; //+
+            } else if (get_the_ID() == 5176 || get_the_ID() == 5177) {
+                $session["apple_product_id"]= "5176_5177"; //+
+            } else if (get_the_ID() == 5342 || get_the_ID() == 5343) {
+                $session["apple_product_id"]= "5342_5343"; //+
             } else if (get_the_ID() == 3478 || get_the_ID() == 3991) {
-                $session["apple_product_id"]= "3478_3991";
+                $session["apple_product_id"]= "3478_3991"; //+
+            } else if (get_the_ID() == 5174 || get_the_ID() == 5175) {
+                $session["apple_product_id"]= "5174_5175"; //+
             } else {
                 $session["apple_product_id"]= get_the_ID();
             }
@@ -530,8 +538,11 @@ function blda_get_courses($username, $lang)
                 $course["content_stripped"] = wp_strip_all_tags(get_the_content());
                 $course["course_price_type"] = learndash_get_setting(get_the_ID(), 'course_price_type' );
 
+
                 if (get_the_ID() == 2935 || get_the_ID() == 4097) {
-                    $course["apple_product_id"]= "2935_4097";
+                    $course["apple_product_id"]= "2935_4097"; //+
+                } else if (get_the_ID() == 5223 || get_the_ID() == 5264) {
+                    $course["apple_product_id"]= "5223_5264"; //?
                 } else {
                     $course["apple_product_id"]= get_the_ID();
                 }
@@ -1429,11 +1440,67 @@ function blda_better_learndash_api () {
 
                                     $action_result = blda_add_user_to_course($received_user_id, $course_id);
 
+                                    if ($course_id === '3624') {
+                                        $course_id = '3989';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    } else if ($course_id === '3989') {
+                                        $course_id = '3624';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    }
+
+                                    if ($course_id === '5340') {
+                                        $course_id = '5341';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    } else if ($course_id === '5341') {
+                                        $course_id = '5340';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    }
+
+                                    if ($course_id === '5176') {
+                                        $course_id = '5177';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    } else if ($course_id === '5177') {
+                                        $course_id = '5176';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    }
+
+                                    if ($course_id === '5342') {
+                                        $course_id = '5343';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    } else if ($course_id === '5343') {
+                                        $course_id = '5342';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    }
+
+                                    if ($course_id === '3478') {
+                                        $course_id = '3991';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    } else if ($course_id === '3991') {
+                                        $course_id = '3478';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    }
+
+                                    if ($course_id === '5174') {
+                                        $course_id = '5175';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    } else if ($course_id === '5175') {
+                                        $course_id = '5174';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    }
+
                                     if ($course_id === '2935') {
                                         $course_id = '4097';
                                         $action_result = blda_add_user_to_course($received_user_id, $course_id);
                                     } else if ($course_id === '4097') {
                                         $course_id = '2935';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    }
+
+                                    if ($course_id === '5223') {
+                                        $course_id = '5264';
+                                        $action_result = blda_add_user_to_course($received_user_id, $course_id);
+                                    } else if ($course_id === '5264') {
+                                        $course_id = '5223';
                                         $action_result = blda_add_user_to_course($received_user_id, $course_id);
                                     }
 
